@@ -204,6 +204,25 @@ Second one, same session:
 > correct topology anyway: the enforcement point is the one component that's
 > supposed to be reachable.
 
+Third, and the one I'd actually lead with, because only CI caught it:
+
+> My secrets are mode 0600, owned by whoever ran setup. On Linux a bind
+> mount preserves real uid/gid, so the containers — running as the image's
+> baked-in uid — couldn't read them at all. It passed on my machine every
+> time, because Docker Desktop on macOS masks ownership across its
+> file-sharing layer. Green locally, red in CI, and the local result was the
+> misleading one.
+>
+> The tempting fix is `chmod 644` until it works. I didn't, because that
+> trades a real protection for a convenience and the next person would
+> inherit world-readable key material. Instead setup records the host
+> uid/gid in `.env` and Compose runs the services as that user, so the files
+> stay 0600.
+>
+> The lesson I took: "works on my machine" and "works" differ most where the
+> platform is being helpful. Docker Desktop was papering over a permissions
+> model that Linux enforces literally.
+
 ---
 
 ## References

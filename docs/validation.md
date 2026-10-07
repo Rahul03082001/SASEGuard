@@ -152,6 +152,31 @@ dashboard was unreachable. The gateway is now additionally on a
 non-internal `edge` network — which is the more correct topology anyway,
 since the enforcement point is the one component meant to be reachable.
 
+**A third defect was found only by CI, on Linux.** The generated secrets are
+mode `0600`, owned by whoever ran `scripts/setup.py`. On Linux a bind mount
+preserves real uid/gid, so containers running as the image's baked-in uid
+10001 could not read them at all and the identity service's login path
+failed. This did not reproduce locally: Docker Desktop on macOS masks
+ownership across its file-sharing layer, so every container could read the
+files regardless of uid. `setup.py` now records the host uid/gid in `.env`
+and Compose runs all four services as that user. The files stay at `0600` —
+the alternative fix, widening permissions until the container could read
+them, would have traded a real protection for a convenience.
+
+### 2.3.1 CI — Ubuntu x86-64, green
+
+Both jobs pass on GitHub Actions (run `37673752876`):
+
+| Job | Result |
+|---|---|
+| Tests on Python 3.12 | pass — 185 passed, 1 skipped |
+| Docker Compose | pass — build, health, isolation checks, **50/50 smoke** |
+
+The Compose job additionally asserts from inside the runner that ports
+8081–8083 are unreachable from the host and that `jwt_private.pem` does not
+exist inside the gateway container, so neither of the first two defects can
+silently regress.
+
 ### 2.4 Browser — **performed manually**
 
 Driven in a real Chromium browser against the live native stack at
@@ -223,8 +248,10 @@ CI fails the build if any generated secret becomes visible to git.
   clone and CI run. The pytest case skips with an explanatory message rather
   than passing vacuously. Browser behaviour was verified manually instead
   (§2.4).
-- **3.2 Multi-platform.** Run on macOS arm64 and (via CI) Ubuntu x86-64 only.
-  Not tested on Windows.
+- **3.2 Multi-platform.** Verified on macOS 26.5.2 arm64 and, through CI,
+  Ubuntu x86-64 (both the native suite and the full Compose stack). Not
+  tested on Windows; `setup.py` falls back to uid/gid 10001 there, which is
+  untested.
 - **3.3 Concurrency and load.** Only sequential, concurrency 1. No parallel
   benchmark, no soak test, no SQLite write-contention testing.
 - **3.4 Any TLS path.** Everything runs over plain HTTP on loopback.
