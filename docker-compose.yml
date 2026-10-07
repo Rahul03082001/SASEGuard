@@ -23,12 +23,19 @@
 # Before `docker compose up`, run `python scripts/setup.py` on the host. The
 # generated secrets/ and data/ directories are mounted in; they are never
 # baked into the image.
+#
+# Every service runs as `${SASEGUARD_UID}:${SASEGUARD_GID}`, written into .env
+# by setup.py. That is the uid/gid owning the bind-mounted secrets/ and data/.
+# On Linux a bind mount preserves real ownership, so without this the
+# containers could not read mode-0600 secret files. Matching the owner keeps
+# the files 0600 rather than widening permissions to suit the container.
 
 services:
   identity:
     build: .
     image: saseguard:local
     command: ["python", "-m", "uvicorn", "apps.identity:app", "--host", "0.0.0.0", "--port", "8081"]
+    user: "${SASEGUARD_UID:-10001}:${SASEGUARD_GID:-10001}"
     networks: [control]
     volumes:
       # Individual files, not the whole secrets/ directory. The issuer needs
@@ -50,6 +57,7 @@ services:
     build: .
     image: saseguard:local
     command: ["python", "-m", "uvicorn", "apps.policy:app", "--host", "0.0.0.0", "--port", "8082"]
+    user: "${SASEGUARD_UID:-10001}:${SASEGUARD_GID:-10001}"
     networks: [control]
     volumes:
       # Read-write: this service owns the device registry and revocation list.
@@ -70,6 +78,7 @@ services:
     build: .
     image: saseguard:local
     command: ["python", "-m", "uvicorn", "apps.mock_apps:app", "--host", "0.0.0.0", "--port", "8083"]
+    user: "${SASEGUARD_UID:-10001}:${SASEGUARD_GID:-10001}"
     networks: [appdata]
     environment:
       SASEGUARD_SERVICE_CREDENTIAL: ${SASEGUARD_SERVICE_CREDENTIAL:?run scripts/setup.py first to generate .env}
@@ -85,6 +94,7 @@ services:
     build: .
     image: saseguard:local
     command: ["python", "-m", "uvicorn", "apps.gateway:app", "--host", "0.0.0.0", "--port", "8080"]
+    user: "${SASEGUARD_UID:-10001}:${SASEGUARD_GID:-10001}"
     # The only published port in the stack, and only on the loopback address.
     ports:
       - "127.0.0.1:8080:8080"
