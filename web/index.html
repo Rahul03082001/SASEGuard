@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SASEGuard — Zero Trust Access Lab</title>
+<!-- Local stylesheet only. No CDN, no web fonts, no external anything: the
+     gateway serves this page under Content-Security-Policy default-src 'self'
+     with no 'unsafe-inline', and that header is only honest if the page
+     genuinely has no inline or third-party assets. -->
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="logo" aria-hidden="true">SG</span>
+    <div>
+      <h1>SASEGuard</h1>
+      <p class="tagline">SASE-inspired Zero Trust access &amp; data protection lab</p>
+    </div>
+  </div>
+  <div class="session-chip" id="session-chip">
+    <span class="dot dot-off" id="session-dot" aria-hidden="true"></span>
+    <span id="session-label">Not signed in</span>
+  </div>
+</header>
+
+<p class="scope-banner">
+  Local lab with synthetic identities and data. Every control on this page calls the real
+  gateway API — nothing here is simulated in the browser. Not affiliated with any vendor;
+  no SD-WAN, CASB, MFA, or hardware attestation. See <code>docs/threat-model.md</code>.
+</p>
+
+<main class="layout">
+
+  <!-- ---------------------------------------------------------------- -->
+  <section class="panel" aria-labelledby="h-session">
+    <h2 id="h-session">1 · Session</h2>
+    <p class="hint">
+      Password <em>and</em> an enrolled device ID. The issued token is held in
+      JavaScript memory only — never in <code>localStorage</code>, never shown raw.
+    </p>
+    <form id="login-form" autocomplete="off">
+      <label for="username">Username</label>
+      <input id="username" name="username" type="text" value="alice" required
+             autocapitalize="none" spellcheck="false">
+
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" required
+             placeholder="from secrets/demo_credentials.txt" autocomplete="off">
+
+      <label for="device-id">Device ID</label>
+      <input id="device-id" name="device_id" type="text" value="dev-alice-laptop" required
+             autocapitalize="none" spellcheck="false">
+
+      <div class="row">
+        <button type="submit" class="primary">Sign in</button>
+        <button type="button" id="logout-btn" class="danger" disabled>Log out (revoke token)</button>
+      </div>
+    </form>
+    <div class="preset-row">
+      <span class="preset-label">Fill demo user:</span>
+      <button type="button" class="chip" data-user="alice" data-device="dev-alice-laptop">alice · finance</button>
+      <button type="button" class="chip" data-user="bob" data-device="dev-bob-laptop">bob · engineer</button>
+      <button type="button" class="chip" data-user="carol" data-device="dev-carol-byod">carol · contractor</button>
+      <button type="button" class="chip" data-user="admin" data-device="dev-admin-workstation">admin</button>
+      <button type="button" class="chip warn" data-user="alice" data-device="dev-bob-laptop">alice on Bob's device</button>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------- -->
+  <section class="panel" aria-labelledby="h-apps">
+    <h2 id="h-apps">2 · Application access</h2>
+    <p class="hint">
+      Least privilege per role: finance → payroll + wiki · engineer → engineering + wiki ·
+      contractor → wiki only · administrator → all three.
+    </p>
+    <div class="row wrap">
+      <button type="button" class="action" data-app="payroll">GET /apps/payroll</button>
+      <button type="button" class="action" data-app="engineering">GET /apps/engineering</button>
+      <button type="button" class="action" data-app="wiki">GET /apps/wiki</button>
+      <button type="button" class="action warn" data-app="hr-secrets">GET /apps/hr-secrets <span class="tag">unknown</span></button>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------- -->
+  <section class="panel" aria-labelledby="h-web">
+    <h2 id="h-web">3 · Lab web categories</h2>
+    <p class="hint">
+      Fixed local fixture IDs, not URLs. The phishing and gambling fixtures are inert
+      local files — nothing outbound is ever fetched, and there is no URL parameter to abuse.
+    </p>
+    <div class="row wrap">
+      <button type="button" class="action" data-web="docs">docs <span class="tag ok">allow</span></button>
+      <button type="button" class="action" data-web="phishing-sim">phishing-sim <span class="tag bad">block</span></button>
+      <button type="button" class="action" data-web="gambling-sim">gambling-sim <span class="tag bad">block</span></button>
+    </div>
+    <div class="row">
+      <input id="custom-destination" type="text" value="evil.example.com"
+             aria-label="Arbitrary destination" autocapitalize="none" spellcheck="false">
+      <button type="button" class="action warn" id="custom-web-btn">Try arbitrary destination</button>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------- -->
+  <section class="panel" aria-labelledby="h-dlp">
+    <h2 id="h-dlp">4 · Upload &amp; DLP</h2>
+    <p class="hint">
+      Contractors may not upload at all. For everyone else the text is scanned
+      <strong>before</strong> synthetic storage is contacted, so a blocked payload never
+      arrives. Watch the upstream <em>accepted-upload counter</em> stay put.
+    </p>
+    <div class="preset-row">
+      <span class="preset-label">Sample payloads:</span>
+      <button type="button" class="chip" data-sample="clean">clean</button>
+      <button type="button" class="chip warn" data-sample="secret">SG-DEMO-SECRET</button>
+      <button type="button" class="chip warn" data-sample="customer">SG-CUSTOMER</button>
+      <button type="button" class="chip warn" data-sample="email">email address</button>
+      <button type="button" class="chip warn" data-sample="extra-field">extra JSON field</button>
+    </div>
+    <label for="upload-filename">Filename</label>
+    <input id="upload-filename" type="text" value="quarterly-notes.txt" spellcheck="false">
+    <label for="upload-content">Content</label>
+    <textarea id="upload-content" rows="5" spellcheck="false">Quarterly summary: headcount steady, no customer identifiers in this note.</textarea>
+    <div class="row">
+      <button type="button" class="primary" id="upload-btn">POST /saas/upload</button>
+      <span class="counter" id="upload-counter">upstream accepted: —</span>
+    </div>
+    <details class="rules">
+      <summary>Active DLP rules</summary>
+      <ul id="dlp-rule-list"></ul>
+      <p class="hint">
+        Regular expressions over UTF-8 text only. No binary, encoded, encrypted, or
+        image content is inspected. Email detection in particular produces false
+        positives by design — see <code>docs/threat-model.md</code>.
+      </p>
+    </details>
+  </section>
+
+  <!-- ---------------------------------------------------------------- -->
+  <section class="panel" aria-labelledby="h-admin">
+    <h2 id="h-admin">5 · Device posture (administrator)</h2>
+    <p class="hint">
+      Posture and revocation are re-evaluated on <strong>every</strong> request. Break a
+      device here, then reuse the <em>same</em> token above — the next request is denied.
+      Restore it and the same token works again. These controls are hidden for non-admins,
+      but the check that matters is server-side.
+    </p>
+    <div class="row">
+      <button type="button" class="action" id="refresh-devices">GET /admin/devices</button>
+    </div>
+    <div class="table-scroll">
+      <table id="devices-table">
+        <thead>
+          <tr>
+            <th scope="col">Device</th><th scope="col">Owner</th>
+            <th scope="col">Managed</th><th scope="col">Compliant</th>
+            <th scope="col">Risk</th><th scope="col">Posture age</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="devices-body">
+          <tr class="empty"><td colspan="7">Sign in as an administrator and refresh.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------- -->
+  <section class="panel" aria-labelledby="h-audit">
+    <h2 id="h-audit">6 · Audit decisions (administrator)</h2>
+    <p class="hint">
+      Redacted by construction: subject, resource, action, result, reason code, policy
+      version, latency, and DLP <em>rule IDs</em>. No tokens, no passwords, no payloads,
+      no matched values.
+    </p>
+    <div class="row">
+      <label for="audit-result" class="inline">Result</label>
+      <select id="audit-result">
+        <option value="">all</option>
+        <option value="allow">allow</option>
+        <option value="deny">deny</option>
+        <option value="error">error</option>
+      </select>
+      <label for="audit-limit" class="inline">Limit</label>
+      <input id="audit-limit" type="number" value="25" min="1" max="500" class="narrow">
+      <button type="button" class="action" id="refresh-audit">GET /admin/events</button>
+    </div>
+    <div class="table-scroll">
+      <table id="audit-table">
+        <thead>
+          <tr>
+            <th scope="col">Time</th><th scope="col">Subject</th><th scope="col">Resource</th>
+            <th scope="col">Action</th><th scope="col">Result</th><th scope="col">Reason</th>
+            <th scope="col">DLP</th><th scope="col">ms</th>
+          </tr>
+        </thead>
+        <tbody id="audit-body">
+          <tr class="empty"><td colspan="8">Sign in as an administrator and refresh.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------- -->
+  <section class="panel decision" aria-labelledby="h-decision">
+    <h2 id="h-decision">Last decision</h2>
+    <div class="verdict" id="verdict">
+      <span class="verdict-badge" id="verdict-badge">idle</span>
+      <span class="verdict-request" id="verdict-request">No request yet</span>
+    </div>
+    <dl class="decision-grid">
+      <dt>HTTP status</dt><dd id="d-status">—</dd>
+      <dt>Reason code</dt><dd id="d-reason">—</dd>
+      <dt>Detail</dt><dd id="d-detail">—</dd>
+      <dt>Category</dt><dd id="d-category">—</dd>
+      <dt>DLP rules</dt><dd id="d-dlp">—</dd>
+      <dt>Audit event</dt><dd id="d-event">—</dd>
+      <dt>Round trip</dt><dd id="d-latency">—</dd>
+    </dl>
+    <h3>Raw response</h3>
+    <pre id="d-raw" tabindex="0" aria-label="Raw JSON response">—</pre>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <p>
+    SASEGuard is a local teaching lab. Implemented: application-level Zero Trust access,
+    server-side device posture and revocation, lab web-category control, text-only DLP,
+    redacted audit. Not implemented: SD-WAN, real CASB, MFA, hardware attestation,
+    commercial threat intelligence, high availability.
+  </p>
+  <p><a href="/openapi.json">OpenAPI schema</a> · <a href="/healthz">health</a> · <a href="/meta/dlp-rules">DLP rules</a></p>
+</footer>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

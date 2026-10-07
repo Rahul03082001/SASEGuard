@@ -1,0 +1,157 @@
+name: CI
+
+# Runs the same commands a reader would run locally. Nothing in this workflow
+# is CI-only, so a green badge means the documented quickstart actually works.
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests on Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.12 is the version the dependency pins were tested against.
+        python-version: ["3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install pinned dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Generate keys, credentials and databases
+        run: python scripts/setup.py
+
+      - name: Verify no secrets are tracked by git
+        run: |
+          # A generated credential reaching the repository would be the single
+          # worst failure this project could have, so it is checked in CI
+          # rather than trusted to .gitignore alone.
+          if git ls-files --error-unmatch .env secrets/ data/ 2>/dev/null; then
+            echo "::error::Generated secrets or databases are tracked by git."
+            exit 1
+          fi
+          if [ -n "$(git status --porcelain --untracked-files=all | grep -E 'secrets/|\.env$|data/' || true)" ]; then
+            echo "::error::Generated files are visible to git; check .gitignore."
+            git status --porcelain --untracked-files=all
+            exit 1
+          fi
+          echo "No generated secrets are tracked or untracked-visible."
+
+      - name: Run the test suite
+        run: python -m pytest -v
+
+      - name: Start all services
+        run: |
+          nohup python scripts/run_local.py --log-level warning > services.log 2>&1 &
+          for _ in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8080/healthz > /dev/null 2>&1; then
+              echo "Gateway is healthy."
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::Services did not become healthy in time."
+          cat services.log
+          exit 1
+
+      - name: Live HTTP smoke test
+        run: python scripts/smoke.py
+
+      - name: Benchmark (sequential, recorded not asserted)
+        # Timing on a shared CI runner is noisy, so this runs for coverage of
+        # the script itself. No threshold is enforced and no number from here
+        # is quoted as a result.
+        run: python scripts/benchmark.py --requests 50 --warmup 10
+
+      - name: Service logs on failure
+        if: failure()
+        run: cat services.log || true
+
+  docker:
+    name: Docker Compose
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies for setup and smoke
+        run: pip install -r requirements.txt
+
+      - name: Generate keys and credentials on the host
+        # Secrets are generated on the host and mounted in; they are never
+        # baked into the image.
+        run: python scripts/setup.py
+
+      - name: Validate the Compose file
+        run: docker compose config --quiet
+
+      - name: Build and start the stack
+        run: |
+          docker compose build
+          docker compose up -d
+          for _ in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8080/healthz > /dev/null 2>&1; then
+              echo "Gateway is healthy."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::Compose stack did not become healthy."
+          docker compose ps
+          docker compose logs
+          exit 1
+
+      - name: Private services must not be reachable from the host
+        run: |
+          for port in 8081 8082 8083; do
+            if curl -fsS --max-time 3 "http://127.0.0.1:${port}/healthz" > /dev/null 2>&1; then
+              echo "::error::Private service on port ${port} is exposed to the host."
+              exit 1
+            fi
+          done
+          echo "Only the gateway is published."
+
+      - name: The gateway must not hold the private signing key
+        run: |
+          if docker compose exec -T gateway test -f /app/secrets/jwt_private.pem; then
+            echo "::error::The gateway container can read the RSA private key."
+            exit 1
+          fi
+          echo "Gateway has the public key only."
+
+      - name: Live HTTP smoke test against Compose
+        run: python scripts/smoke.py
+
+      - name: Compose logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

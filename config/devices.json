@@ -1,0 +1,37 @@
+{
+  "_comment": "Seed for the lab device registry. scripts/setup.py copies this into the policy SQLite database and stamps last_seen to setup time so the lab starts healthy. Editing this file after setup has no effect; use PUT /admin/devices/{device_id} or re-run setup with --force.",
+  "devices": [
+    {
+      "device_id": "dev-alice-laptop",
+      "owner": "alice",
+      "label": "Alice MacBook (finance)",
+      "managed": true,
+      "compliant": true,
+      "risk_score": 5
+    },
+    {
+      "device_id": "dev-bob-laptop",
+      "owner": "bob",
+      "label": "Bob ThinkPad (engineering)",
+      "managed": true,
+      "compliant": true,
+      "risk_score": 10
+    },
+    {
+      "device_id": "dev-carol-byod",
+      "owner": "carol",
+      "label": "Carol BYOD (contractor)",
+      "managed": true,
+      "compliant": true,
+      "risk_score": 25
+    },
+    {
+      "device_id": "dev-admin-workstation",
+      "owner": "admin",
+      "label": "Administrator workstation",
+      "managed": true,
+      "compliant": true,
+      "risk_score": 0
+    }
+  ]
+}

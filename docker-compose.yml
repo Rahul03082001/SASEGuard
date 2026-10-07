@@ -1,0 +1,131 @@
+# SASEGuard — four services on two private networks.
+#
+# The network layout is part of the security design, not just tidiness:
+#
+#   control  : gateway <-> identity, policy      (decision plane, internal)
+#   appdata  : gateway <-> apps                  (data plane, internal)
+#   edge     : gateway only                      (the published port)
+#
+# The identity and policy services are not attached to `appdata`, so a
+# compromised synthetic application cannot reach the token issuer or ask the
+# policy service for a decision. Only the gateway sits on both planes.
+#
+# `control` and `appdata` are `internal: true`, which removes their outbound
+# route entirely -- those three services cannot reach the internet even if
+# they tried. A container whose every network is internal also cannot have a
+# port published to the host, which is why the gateway (and only the gateway)
+# is additionally on `edge`. That is the correct shape anyway: the policy
+# enforcement point is the one component that is supposed to be reachable.
+#
+# Only the gateway publishes a host port, and it is bound to 127.0.0.1 so the
+# lab is not exposed to the local network.
+#
+# Before `docker compose up`, run `python scripts/setup.py` on the host. The
+# generated secrets/ and data/ directories are mounted in; they are never
+# baked into the image.
+
+services:
+  identity:
+    build: .
+    image: saseguard:local
+    command: ["python", "-m", "uvicorn", "apps.identity:app", "--host", "0.0.0.0", "--port", "8081"]
+    networks: [control]
+    volumes:
+      # Individual files, not the whole secrets/ directory. The issuer needs
+      # exactly these two and gets nothing else -- not even the generated
+      # credentials file.
+      - ./secrets/jwt_private.pem:/app/secrets/jwt_private.pem:ro
+      - ./secrets/users.json:/app/secrets/users.json:ro
+    environment:
+      SASEGUARD_SECRETS_DIR: /app/secrets
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8081/healthz', timeout=2).status==200 else 1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+  policy:
+    build: .
+    image: saseguard:local
+    command: ["python", "-m", "uvicorn", "apps.policy:app", "--host", "0.0.0.0", "--port", "8082"]
+    networks: [control]
+    volumes:
+      # Read-write: this service owns the device registry and revocation list.
+      - ./data:/app/data
+    environment:
+      SASEGUARD_DATA_DIR: /app/data
+      SASEGUARD_POLICY_DB: /app/data/policy.sqlite3
+      SASEGUARD_SERVICE_CREDENTIAL: ${SASEGUARD_SERVICE_CREDENTIAL:?run scripts/setup.py first to generate .env}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8082/healthz', timeout=2).status==200 else 1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+  apps:
+    build: .
+    image: saseguard:local
+    command: ["python", "-m", "uvicorn", "apps.mock_apps:app", "--host", "0.0.0.0", "--port", "8083"]
+    networks: [appdata]
+    environment:
+      SASEGUARD_SERVICE_CREDENTIAL: ${SASEGUARD_SERVICE_CREDENTIAL:?run scripts/setup.py first to generate .env}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8083/healthz', timeout=2).status==200 else 1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+  gateway:
+    build: .
+    image: saseguard:local
+    command: ["python", "-m", "uvicorn", "apps.gateway:app", "--host", "0.0.0.0", "--port", "8080"]
+    # The only published port in the stack, and only on the loopback address.
+    ports:
+      - "127.0.0.1:8080:8080"
+    networks: [control, appdata, edge]
+    depends_on:
+      identity: {condition: service_healthy}
+      policy: {condition: service_healthy}
+      apps: {condition: service_healthy}
+    volumes:
+      # The public key and nothing else. Mounting the whole secrets/
+      # directory here would hand the gateway the RSA *private* key, which
+      # would quietly invalidate the central claim of this design: that a
+      # compromised enforcement point can read tokens but cannot mint them.
+      # Mount the one file it actually needs.
+      - ./secrets/jwt_public.pem:/app/secrets/jwt_public.pem:ro
+      - ./data:/app/data
+    environment:
+      SASEGUARD_SECRETS_DIR: /app/secrets
+      SASEGUARD_DATA_DIR: /app/data
+      SASEGUARD_AUDIT_DB: /app/data/audit.sqlite3
+      SASEGUARD_IDENTITY_URL: http://identity:8081
+      SASEGUARD_POLICY_URL: http://policy:8082
+      SASEGUARD_APPS_URL: http://apps:8083
+      SASEGUARD_SERVICE_CREDENTIAL: ${SASEGUARD_SERVICE_CREDENTIAL:?run scripts/setup.py first to generate .env}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=2).status==200 else 1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+networks:
+  # `internal: true` means no outbound route at all. Neither plane can reach
+  # the internet, which is a strong guarantee that the lab's "web category"
+  # fixtures really are local files rather than anything fetched.
+  control:
+    internal: true
+  appdata:
+    internal: true
+  # Not internal, because a published host port requires it. Nothing but the
+  # gateway is attached.
+  edge:
+    internal: false

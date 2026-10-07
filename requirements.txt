@@ -1,0 +1,10 @@
+# Pinned to the versions actually installed and tested in this repo's CI.
+fastapi==0.115.6
+uvicorn==0.34.0
+httpx==0.28.1
+PyJWT==2.10.1
+cryptography==44.0.0
+pydantic==2.10.4
+PyYAML==6.0.2
+pytest==8.3.4
+pytest-asyncio==0.25.0

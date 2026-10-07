@@ -1,0 +1,68 @@
+# SASEGuard policy-as-code.
+#
+# This file is the single authoritative source for role grants and posture
+# thresholds. It is loaded by the policy decision service only. The gateway
+# never reads it, so the gateway cannot be tricked into deciding locally.
+#
+# Any edit changes the content hash reported in audit events, which is how a
+# reviewer can tell which ruleset produced a decision.
+policy_version: "1.0.0"
+
+# Device posture thresholds. A request is denied unless the authoritative
+# device record satisfies every one of these.
+posture:
+  # Inclusive upper bound. risk_score > max_risk_score is denied.
+  max_risk_score: 30
+  # Posture older than this is treated as unknown, not as healthy.
+  max_posture_age_hours: 24
+  require_managed: true
+  require_compliant: true
+  # The device must be enrolled to the subject presenting the token.
+  require_ownership: true
+
+# Fixed synthetic resource IDs. Anything not listed here is denied.
+resources:
+  apps:
+    - payroll
+    - engineering
+    - wiki
+
+# Least-privilege grants. Absence is denial; there is no wildcard.
+roles:
+  finance:
+    apps: [payroll, wiki]
+    upload: true
+    admin: false
+  engineer:
+    apps: [engineering, wiki]
+    upload: true
+    admin: false
+  contractor:
+    apps: [wiki]
+    upload: false
+    admin: false
+  administrator:
+    apps: [payroll, engineering, wiki]
+    upload: true
+    admin: true
+
+# Lab web-category fixtures. Destinations are fixed IDs, never client URLs,
+# so there is no URL for a caller to point at an arbitrary host.
+web_destinations:
+  docs:
+    category: business-and-economy
+    action: allow
+  phishing-sim:
+    category: phishing
+    action: block
+  gambling-sim:
+    category: gambling
+    action: block
+
+# Actions the policy service understands. Unknown actions are denied.
+actions:
+  - app.read
+  - web.visit
+  - saas.upload
+  - admin.read
+  - admin.write

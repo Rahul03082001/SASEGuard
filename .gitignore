@@ -1,0 +1,23 @@
+# Generated at setup time. Never commit secrets, keys, or databases.
+.env
+secrets/
+data/
+bench/
+*.pem
+*.sqlite
+*.sqlite3
+*.db
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
