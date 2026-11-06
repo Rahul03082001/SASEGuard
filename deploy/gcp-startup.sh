@@ -31,7 +31,14 @@ docker run --rm --user "$(id -u saseguard):$(id -g saseguard)" \
 saseguard_ip=$(curl --fail --silent --show-error --retry 5 \
   -H 'Metadata-Flavor: Google' \
   http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip)
-printf 'SASEGUARD_DOMAIN=%s\n' "$saseguard_ip" > deploy/gcp.env
+# SASEGUARD_DOMAIN defaults to a name that resolves to this instance without
+# anyone having to own a domain: sslip.io answers any <name>.<ip>.sslip.io
+# with that IP. Override it in deploy/gcp.env to use a real domain.
+saseguard_host="${SASEGUARD_DOMAIN:-saseguard.${saseguard_ip}.sslip.io}"
+{
+  printf 'SASEGUARD_DOMAIN=%s\n' "$saseguard_host"
+  printf 'SASEGUARD_IP=%s\n' "$saseguard_ip"
+} > deploy/gcp.env
 chown saseguard:saseguard deploy/gcp.env
 chmod 0600 deploy/gcp.env
 

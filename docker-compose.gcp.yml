@@ -63,7 +63,11 @@ services:
       - "443:443"
     networks: [edge]
     environment:
-      SASEGUARD_DOMAIN: ${SASEGUARD_DOMAIN:?set the reserved public IP in deploy/gcp.env}
+      # The public hostname the site is served under.
+      SASEGUARD_DOMAIN: ${SASEGUARD_DOMAIN:?set the public hostname in deploy/gcp.env}
+      # The reserved IP, kept as its own site so older links still resolve
+      # and redirect to the name rather than failing a certificate check.
+      SASEGUARD_IP: ${SASEGUARD_IP:?set the reserved public IP in deploy/gcp.env}
     volumes:
       - ./deploy/Caddyfile.gcp:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

@@ -1,19 +1,38 @@
 {
-	# Browsers omit SNI when visiting an IP address. Use the reserved public IP.
-	default_sni {$SASEGUARD_DOMAIN}
+	# A browser visiting a bare IP sends no SNI, so Caddy has to be told which
+	# site to serve for a connection that arrives without one. Point it at the
+	# IP site below, which redirects on to the named one.
+	default_sni {$SASEGUARD_IP}
 }
 
+# Primary site, reached by name.
+#
+# A normal Let's Encrypt certificate: no issuer block is needed because the
+# hostname resolves to this instance and port 80 is open, so the HTTP-01
+# challenge just works. These are 90-day certificates, which Caddy renews on
+# its own at around day 60.
 {$SASEGUARD_DOMAIN} {
-	tls {
-		issuer acme {
-			dir https://acme-v02.api.letsencrypt.org/directory
-			profile shortlived
-		}
-	}
 	encode zstd gzip
 	header -Server
 	request_body {
 		max_size 65536
 	}
 	reverse_proxy gateway:8080
+}
+
+# The bare IP keeps answering, so any link already shared still works and
+# lands on the named URL instead of breaking.
+#
+# This one does need an explicit issuer: Let's Encrypt will only certify an
+# IP address under its short-lived profile, which issues ~7-day certificates
+# rather than 90-day ones. That is also why the named site above is the
+# primary -- it does not depend on that newer, narrower profile.
+{$SASEGUARD_IP} {
+	tls {
+		issuer acme {
+			dir https://acme-v02.api.letsencrypt.org/directory
+			profile shortlived
+		}
+	}
+	redir https://{$SASEGUARD_DOMAIN}{uri} permanent
 }
