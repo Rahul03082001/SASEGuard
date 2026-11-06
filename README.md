@@ -4,6 +4,18 @@
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
+### ▶ Live demo — **[saseguard.duckdns.org](https://saseguard.duckdns.org)**
+
+A real deployment, not a screenshot: GCE instance, Docker Compose, Caddy with
+a Let's Encrypt certificate, and the four services on isolated private
+networks with only the gateway reachable. Log in as any demo role and the
+policy decisions you see are made server-side by the running policy service.
+
+Credentials are generated per deployment, so ask for them or run the lab
+locally with the quickstart below.
+
+---
+
 A runnable, **SASE-inspired** local security lab. Four services enforce
 application-level Zero Trust access, live device posture, lab web-category
 controls, and text-only DLP — and record a redacted audit decision before
