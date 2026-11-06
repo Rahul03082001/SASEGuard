@@ -43,6 +43,18 @@ services:
   gateway:
     logging: *gcp-logging
     healthcheck: *slow-host-healthcheck
+    volumes:
+      # Serve the dashboard from the host copy rather than the image layer.
+      #
+      # The Dockerfile COPYs web/ in, which is right for local and CI where a
+      # rebuild is seconds. On this e2-micro a rebuild is ~12 minutes, so
+      # baking static assets into the image makes a one-line CSS change cost
+      # a quarter of an hour of downtime. Read-only, and it is the same
+      # directory the image would have contained, so nothing diverges.
+      #
+      # Compose appends to the volume list from docker-compose.yml, so the
+      # public-key and data mounts defined there are unaffected.
+      - ./web:/app/web:ro
   caddy:
     image: caddy:2.11.8-alpine
     restart: unless-stopped

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Safari pinned-tab icon: one flat shape in pure black, recoloured by
+       the `color` attribute on the <link>. No gradients, no plate and no
+       strokes; the tick is cut out of the shield with fill-rule. -->
+  <path fill="#000" fill-rule="evenodd" clip-rule="evenodd"
+        d="M16 3.4 26.6 6.9V15.9C26.6 22.4 22.2 27.5 16 29.3 9.8 27.5 5.4 22.4 5.4 15.9V6.9Z
+           M14.7 21.6 10.1 17 12.6 14.5 14.7 16.6 20.2 10.5 22.7 13Z"/>
+</svg>

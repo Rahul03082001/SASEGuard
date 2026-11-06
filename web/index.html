@@ -5,11 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#0c1016">
 <title>SASEGuard — Access control console</title>
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link rel="mask-icon" href="/static/mask-icon.svg" color="#e6bc69">
+<meta name="description" content="SASE-inspired Zero Trust access and data protection lab: verified identity, live device posture, text-only DLP, and a redacted fail-closed audit trail.">
 <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
 <svg class="icon-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
 <symbol id="i-shield" viewBox="0 0 24 24"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></symbol>
+<symbol id="i-logo" viewBox="0 0 24 24"><path d="M12 2.8 19.2 5.5V11.6C19.2 16.3 16.2 19.9 12 21.2 7.8 19.9 4.8 16.3 4.8 11.6V5.5Z"/><path d="m8.5 12.1 2.5 2.5 4.5-5.1"/></symbol>
 <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
 <symbol id="i-device" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="13" rx="2"/><path d="M9 16v4m6-4v4M6 21h12"/></symbol>
 <symbol id="i-list" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6m-6 4h6m-6 4h4"/></symbol>
@@ -23,7 +27,7 @@
 </defs></svg>
 <a class="skip-link" href="#main">Skip to console</a>
 <header class="topbar">
-  <a class="brand" href="#overview" aria-label="SASEGuard command center"><span class="brand-mark"><svg aria-hidden="true"><use href="#i-shield"/></svg></span><span>SASE<span class="brand-light">GUARD</span></span><span class="brand-version">/ 01</span></a>
+  <a class="brand" href="#overview" aria-label="SASEGuard command center"><span class="brand-mark"><svg aria-hidden="true"><use href="#i-logo"/></svg></span><span>SASE<span class="brand-light">GUARD</span></span><span class="brand-version">/ 01</span></a>
   <nav aria-label="Main navigation"><button class="nav-item active" data-view="overview" aria-current="page"><span>01</span>Command center</button><button class="nav-item" data-view="devices"><span>02</span>Device posture</button><button class="nav-item" data-view="audit"><span>03</span>Audit trail</button></nav>
   <div class="topbar-right"><span class="environment-tag"><span class="dot dot-on"></span>LAB ENVIRONMENT</span><button class="profile-button" data-open-session aria-label="Manage identity"><svg aria-hidden="true"><use href="#i-key"/></svg></button></div>
 </header>

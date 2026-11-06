@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="SASEGuard">
+  <!-- SASEGuard mark: the shield-and-tick from the site header, on the same
+       dark ground, in the same amber.
+
+       The header draws the shield as a thin outline, which is right at 28px
+       and disappears at 16px. Compared side by side at real tab size, the
+       outline washed out entirely, so here the shield is solid and the tick
+       is knocked out of it. Same two colours, same motif, same reading
+       order, enough weight to survive a tab strip.
+
+       The dark plate is deliberate rather than transparent: a tab strip may
+       be light or dark, and the plate keeps the mark on its own ground in
+       both. -->
+  <rect width="32" height="32" rx="7" fill="#0c1016"/>
+  <path d="M16 3.6 26.4 7.1V15.9C26.4 22.2 22.1 27.2 16 29 9.9 27.2 5.6 22.2 5.6 15.9V7.1Z"
+        fill="#e3b45f"/>
+  <path d="m11.5 16.2 3.2 3.2 6-6.7" fill="none" stroke="#0c1016" stroke-width="3"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
