@@ -1,19 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="SASEGuard">
-  <!-- SASEGuard mark: the shield-and-tick from the site header, on the same
-       dark ground, in the same amber.
+  <!-- SASEGuard mark: the header logo. Amber boundary, dark fill, amber tick
+       inside.
 
-       The header draws the shield as a thin outline, which is right at 28px
-       and disappears at 16px. Compared side by side at real tab size, the
-       outline washed out entirely, so here the shield is solid and the tick
-       is knocked out of it. Same two colours, same motif, same reading
-       order, enough weight to survive a tab strip.
+       The only thing changed for favicon use is stroke weight. The header
+       draws this at 28px with a 1.6 stroke; scaled down to a 16px tab that
+       outline is thinner than a pixel and the mark washes out to a smudge.
+       Weights were compared side by side at 16px on both light and dark tab
+       strips: 2.2 was faint, 3.6 crowded the tick against the boundary, and
+       3.2 reads cleanly at 16px while still looking like the logo at 96px.
 
-       The dark plate is deliberate rather than transparent: a tab strip may
-       be light or dark, and the plate keeps the mark on its own ground in
-       both. -->
+       The plate is dark rather than transparent so the mark keeps its own
+       ground whichever way the browser's tab strip is themed. -->
   <rect width="32" height="32" rx="7" fill="#0c1016"/>
-  <path d="M16 3.6 26.4 7.1V15.9C26.4 22.2 22.1 27.2 16 29 9.9 27.2 5.6 22.2 5.6 15.9V7.1Z"
-        fill="#e3b45f"/>
-  <path d="m11.5 16.2 3.2 3.2 6-6.7" fill="none" stroke="#0c1016" stroke-width="3"
+
+  <path d="M16 3.4 26.6 6.9V15.8C26.6 22.3 22.2 27.4 16 29.2 9.8 27.4 5.4 22.3 5.4 15.8V6.9Z"
+        fill="#11161d" stroke="#e3b45f" stroke-width="3.2" stroke-linejoin="round"/>
+
+  <path d="m11.4 16.2 3.2 3.2 6-6.8" fill="none" stroke="#e3b45f" stroke-width="3.2"
         stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
