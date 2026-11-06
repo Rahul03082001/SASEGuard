@@ -130,6 +130,16 @@ Only the gateway publishes a port, bound to `127.0.0.1:8080`. The three
 private services sit on `internal: true` networks with no outbound route and
 are unreachable from the host.
 
+### Hosting a live demo
+
+For Google Cloud, see [`docs/gcp-deployment.md`](docs/gcp-deployment.md).
+It uses a small Compute Engine VM with persistent storage and public HTTPS.
+
+For a persistent HTTPS deployment on a Linux server, see
+[`docs/deployment.md`](docs/deployment.md). The hosted Compose overlay adds
+Caddy while preserving the four services and their private networks.
+It publishes the synthetic lab; the security limitations below still apply.
+
 ## Generated credentials
 
 `scripts/setup.py` generates, locally and per installation:
@@ -161,8 +171,9 @@ Rotate with `python scripts/setup.py --force`.
 
 The full script is [`docs/demo.md`](docs/demo.md). The one moment to show:
 
-1. Sign in as **alice**, click **GET /apps/payroll** → `200`.
-2. In a second tab, sign in as **admin** and click **break** on
+1. Sign in as **alice**, open **Payroll** → `200`.
+2. In a second tab, connect as **Administrator**, open **Device posture**,
+   click **Refresh**, and click **break** on
    `dev-alice-laptop`.
 3. Back in Alice's tab — **without signing in again** — click payroll:
 

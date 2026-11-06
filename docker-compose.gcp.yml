@@ -1,0 +1,65 @@
+# GCP overlay: public-IP HTTPS, with all original service isolation intact.
+x-gcp-logging: &gcp-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+# Health-check timings sized for an e2-micro (2 shared vCPU, 1 GB RAM).
+#
+# The base compose uses interval 5s / timeout 3s, which is right on a laptop
+# and impossible here. Measured on this instance, the check itself takes
+# 9-13s: the image has no curl or wget, so the probe starts a Python
+# interpreter, and bare `python -c pass` alone costs ~2.5s on this hardware.
+#
+# A 3s timeout against a 10s check fails 100% of the time, which is what left
+# gateway and caddy stuck in "Created" -- they wait on service_healthy, so a
+# probe that can never pass means the site never comes up.
+#
+# The 5s interval made it worse rather than just slower. Each probe outlived
+# its own interval, so Docker kept starting new ones on top of the running
+# ones and three services' worth of overlapping interpreters pinned the CPU
+# -- which in turn made every probe slower still. Backing the interval off to
+# 60s removes the pile-up, and most of the load with it.
+#
+# Only the timings are overridden here; the `test` command is merged in from
+# docker-compose.yml so there is one definition of what "healthy" means.
+x-slow-host-healthcheck: &slow-host-healthcheck
+  interval: 60s      # > the 13s worst case observed, so probes never overlap
+  timeout: 30s       # ~2.5x that worst case
+  retries: 5
+  start_period: 120s # first run is slowest: cold page cache, cold imports
+
+services:
+  identity:
+    logging: *gcp-logging
+    healthcheck: *slow-host-healthcheck
+  policy:
+    logging: *gcp-logging
+    healthcheck: *slow-host-healthcheck
+  apps:
+    logging: *gcp-logging
+    healthcheck: *slow-host-healthcheck
+  gateway:
+    logging: *gcp-logging
+    healthcheck: *slow-host-healthcheck
+  caddy:
+    image: caddy:2.11.8-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    networks: [edge]
+    environment:
+      SASEGUARD_DOMAIN: ${SASEGUARD_DOMAIN:?set the reserved public IP in deploy/gcp.env}
+    volumes:
+      - ./deploy/Caddyfile.gcp:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      gateway: {condition: service_healthy}
+    logging: *gcp-logging
+
+volumes:
+  caddy_data:
+  caddy_config:

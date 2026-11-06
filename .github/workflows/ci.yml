@@ -63,6 +63,9 @@ jobs:
       - name: Run the test suite
         run: python -m pytest -v
 
+      - name: Dashboard credential-handling regressions
+        run: node --test tests/dashboard.test.cjs
+
       - name: Start all services
         run: |
           nohup python scripts/run_local.py --log-level warning > services.log 2>&1 &

@@ -1,0 +1,19 @@
+{
+	# Browsers omit SNI when visiting an IP address. Use the reserved public IP.
+	default_sni {$SASEGUARD_DOMAIN}
+}
+
+{$SASEGUARD_DOMAIN} {
+	tls {
+		issuer acme {
+			dir https://acme-v02.api.letsencrypt.org/directory
+			profile shortlived
+		}
+	}
+	encode zstd gzip
+	header -Server
+	request_body {
+		max_size 65536
+	}
+	reverse_proxy gateway:8080
+}

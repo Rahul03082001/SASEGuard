@@ -1,0 +1,17 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$SASEGUARD_DOMAIN} {
+	encode zstd gzip
+	header Strict-Transport-Security "max-age=31536000"
+	header -Server
+
+	# Bound incoming bodies before they reach Python, including chunked bodies.
+	request_body {
+		max_size 65536
+	}
+
+	# Only the gateway is on this network. Caddy cannot call private services.
+	reverse_proxy gateway:8080
+}

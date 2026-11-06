@@ -1,5 +1,8 @@
 # Generated at setup time. Never commit secrets, keys, or databases.
 .env
+/deploy/hosting.env
+/deploy/gcp.env
+/.deploy/
 secrets/
 data/
 bench/

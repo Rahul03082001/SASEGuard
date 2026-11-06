@@ -1,7 +1,7 @@
 # Five-minute demo walkthrough
 
 Everything below is clickable in the dashboard at `http://127.0.0.1:8080`,
-and every button calls the real API. The equivalent `curl` is given so you
+and every test action calls the real API. The equivalent `curl` is given so you
 can see there is no browser-side magic.
 
 ## Setup (once)
@@ -12,8 +12,9 @@ python scripts/run_local.py        # leave this running
 cat secrets/demo_credentials.txt   # your generated passwords
 ```
 
-Open `http://127.0.0.1:8080`. Keep **panel 7, "Last decision"**, in view — it
-shows the reason code and audit event ID for every request.
+Open `http://127.0.0.1:8080`. Keep the **Decision output** in view. It displays the status, reason
+code, and audit event ID returned by the server. On a narrow screen it
+appears below the workspace. **View response details** shows redacted JSON.
 
 ---
 
@@ -28,14 +29,16 @@ shows the reason code and audit event ID for every request.
 
 ## 0:20 — Sign in as Alice (finance)
 
-Click **alice · finance**, paste her password, **Sign in**.
+Click **Connect identity**, choose **Alice · Finance**, enter her generated
+password, then click **Connect identity** in the dialog.
 
 > "A password *and* an enrolled device. The token is RS256, lives ten
 > minutes, and is held in a JavaScript variable — not localStorage. The
 > gateway only ever has the public key; the private key is in a separate
 > process."
 
-**Show the failure first.** Click **alice on Bob's device**, sign in again:
+**Show the failure first.** Open **Manage identity**, set Enrolled device to
+`dev-bob-laptop`, enter Alice's password, and connect again:
 
 ```
 401 DENY_DEVICE_NOT_ENROLLED
@@ -49,8 +52,8 @@ Sign back in properly as alice.
 
 ## 1:00 — Least privilege
 
-Click **GET /apps/payroll** → `200`.
-Click **GET /apps/engineering** → `403 DENY_ROLE_NOT_PERMITTED`.
+Click **Payroll** → `200`.
+Click **Engineering** → `403 DENY_ROLE_NOT_PERMITTED`.
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8080/apps/engineering | jq
@@ -59,7 +62,7 @@ curl -s -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8080/apps/engineering
 > "Finance reaches payroll and the wiki, not engineering. The server decides
 > — the UI isn't hiding anything."
 
-Now the part that matters. Click **GET /apps/hr-secrets**:
+Now the part that matters. Click **Test an unknown app**:
 
 ```
 403 DENY_UNKNOWN_RESOURCE
@@ -71,7 +74,7 @@ Now the part that matters. Click **GET /apps/hr-secrets**:
 
 ## 1:40 — Spoofed headers do nothing
 
-Sign in as **carol · contractor**, then run:
+Sign in as **Carol · Contractor**, then run:
 
 ```bash
 curl -s -H "Authorization: Bearer $CAROL" \
@@ -87,10 +90,11 @@ curl -s -H "Authorization: Bearer $CAROL" \
 
 ## 2:10 — DLP blocks *before* the data moves
 
-Back as alice. Click **clean** → **POST /saas/upload** → `200`. Note
+Back as Alice, select the **Data protection** tab. Click **Clean text** →
+**Inspect & upload** → `200`. Note
 `upstream accepted: 1`.
 
-Click **SG-DEMO-SECRET** → **POST /saas/upload**:
+Click **Demo secret** → **Inspect & upload**:
 
 ```
 403 DENY_DLP_MATCH   rules: SG-DLP-001 x1
@@ -100,13 +104,13 @@ Click **SG-DEMO-SECRET** → **POST /saas/upload**:
 > value — otherwise the error message would leak the secret we just saved.
 > And the upstream counter is still 1."
 
-Click **clean** → upload again → counter reads `2`.
+Click **Clean text** → upload again → counter reads `2`.
 
 > "The blocked payload never reached storage. That's the counter proving it.
 > A 403 after forwarding would look identical to a user and be a total
 > failure."
 
-Then click **extra JSON field** → upload → `400`.
+Then click **Malformed request** → upload → `400`.
 
 > "`{"skip_dlp": true}` is rejected, not ignored. Silently dropping an
 > unknown field is how a client ends up believing it turned off scanning."
@@ -118,10 +122,11 @@ is even looked at.
 
 ## 3:00 — Web categories, and why there's no SSRF here
 
-As alice: **docs** → `200`. **phishing-sim** → `403 DENY_WEB_CATEGORY`.
+As Alice, select **Web access**: **Documentation** → `200`.
+**Phishing simulation** → `403 DENY_WEB_CATEGORY`.
 
 Then type `169.254.169.254` into the arbitrary-destination box and click
-**Try arbitrary destination**:
+**Test destination**:
 
 ```
 403 DENY_UNKNOWN_DESTINATION
@@ -137,11 +142,11 @@ Then type `169.254.169.254` into the arbitrary-destination box and click
 ## 3:40 — The headline: posture, live, on an already-issued token
 
 **Keep Alice's existing session.** Open a second browser tab, sign in as
-**admin**, click **GET /admin/devices**.
+**Administrator**, open **Device posture**, then click **Refresh**.
 
 In the admin tab, click **break** on `dev-alice-laptop`.
 
-Back in Alice's tab — *without signing in again* — click **GET /apps/payroll**:
+Back in Alice's tab — *without signing in again* — click **Payroll**:
 
 ```
 403 DENY_DEVICE_NONCOMPLIANT
@@ -164,11 +169,10 @@ Say the limitation out loud:
 
 ## 4:20 — Revocation is different, and permanent
 
-In Alice's tab, click **Log out (revoke token)**, then click payroll:
-
-```
-403 DENY_TOKEN_REVOKED
-```
+In Alice's tab, open **Manage identity** and click **Log out**. Opening
+Payroll now returns `401 DENY_NO_CREDENTIALS`, because the browser discarded
+its token. Replaying the previously issued token through an API client
+returns `403 DENY_TOKEN_REVOKED`; the live smoke test verifies that replay.
 
 ```bash
 sqlite3 data/policy.sqlite3 "SELECT token_id, subject FROM revoked_tokens;"
@@ -182,14 +186,15 @@ sqlite3 data/policy.sqlite3 "SELECT token_id, subject FROM revoked_tokens;"
 
 ## 4:40 — The audit trail
 
-In the admin tab: **GET /admin/events**, set Result to **deny**.
+In the administrator tab, open **Audit trail**, set Result to **Denied**,
+then click **Load events**.
 
 > "Subject, resource, action, result, reason code, policy version, latency,
 > DLP rule IDs. No tokens, no passwords, no request bodies, no matched text.
 > The redaction is structural — there is no column that *could* hold a
 > secret."
 
-Point at the policy version column:
+Expand **View response details** and inspect an event's `policy_version`:
 
 > "`1.0.0+a3d129eea7ab` — version plus a hash of the exact policy file. Six
 > months from now you can still answer which ruleset produced this decision."

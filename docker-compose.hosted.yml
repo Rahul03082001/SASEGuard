@@ -1,0 +1,42 @@
+# Add HTTPS to the existing four-service lab:
+# docker compose --env-file .env --env-file deploy/hosting.env \
+#   -f docker-compose.yml -f docker-compose.hosted.yml up --build -d --wait
+# The base file still owns all private networks, credentials and databases.
+x-hosted-logging: &hosted-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  identity:
+    logging: *hosted-logging
+  policy:
+    logging: *hosted-logging
+  apps:
+    logging: *hosted-logging
+  gateway:
+    logging: *hosted-logging
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    networks: [edge]
+    environment:
+      SASEGUARD_DOMAIN: ${SASEGUARD_DOMAIN:?set a hostname in deploy/hosting.env}
+      ACME_EMAIL: ${ACME_EMAIL:?set a certificate contact email in deploy/hosting.env}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      gateway: {condition: service_healthy}
+    logging: *hosted-logging
+
+volumes:
+  caddy_data:
+  caddy_config:

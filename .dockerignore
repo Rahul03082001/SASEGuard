@@ -12,3 +12,8 @@ __pycache__
 docs
 tests
 .DS_Store
+# A separate, untracked checkout may exist locally; never send it to Docker.
+SASEGuard/
+deploy/hosting.env
+deploy/gcp.env
+.deploy/

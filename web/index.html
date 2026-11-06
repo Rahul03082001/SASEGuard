@@ -3,238 +3,71 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SASEGuard — Zero Trust Access Lab</title>
-<!-- Local stylesheet only. No CDN, no web fonts, no external anything: the
-     gateway serves this page under Content-Security-Policy default-src 'self'
-     with no 'unsafe-inline', and that header is only honest if the page
-     genuinely has no inline or third-party assets. -->
+<meta name="theme-color" content="#0c1016">
+<title>SASEGuard — Access control console</title>
 <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-
+<svg class="icon-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></symbol>
+<symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+<symbol id="i-device" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="13" rx="2"/><path d="M9 16v4m6-4v4M6 21h12"/></symbol>
+<symbol id="i-list" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6m-6 4h6m-6 4h4"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol>
+<symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="9" r="5"/><path d="m12 13 8 8m-5-5 3-3m0 6 3-3"/></symbol>
+<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></symbol>
+<symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6Zm0 0v6h6M8 13h8m-8 4h5"/></symbol>
+<symbol id="i-pulse" viewBox="0 0 24 24"><path d="M2 12h5l3-8 4 16 3-8h5"/></symbol>
+<symbol id="i-code" viewBox="0 0 24 24"><path d="m7 7-5 5 5 5m10-10 5 5-5 5M14 3l-4 18"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 8a8 8 0 0 0-14-3L3 8m0-5v5h5m-4 8a8 8 0 0 0 14 3l3-3m0 5v-5h-5"/></symbol>
+</defs></svg>
+<a class="skip-link" href="#main">Skip to console</a>
 <header class="topbar">
-  <div class="brand">
-    <span class="logo" aria-hidden="true">SG</span>
-    <div>
-      <h1>SASEGuard</h1>
-      <p class="tagline">SASE-inspired Zero Trust access &amp; data protection lab</p>
-    </div>
-  </div>
-  <div class="session-chip" id="session-chip">
-    <span class="dot dot-off" id="session-dot" aria-hidden="true"></span>
-    <span id="session-label">Not signed in</span>
-  </div>
+  <a class="brand" href="#overview" aria-label="SASEGuard command center"><span class="brand-mark"><svg aria-hidden="true"><use href="#i-shield"/></svg></span><span>SASE<span class="brand-light">GUARD</span></span><span class="brand-version">/ 01</span></a>
+  <nav aria-label="Main navigation"><button class="nav-item active" data-view="overview" aria-current="page"><span>01</span>Command center</button><button class="nav-item" data-view="devices"><span>02</span>Device posture</button><button class="nav-item" data-view="audit"><span>03</span>Audit trail</button></nav>
+  <div class="topbar-right"><span class="environment-tag"><span class="dot dot-on"></span>LAB ENVIRONMENT</span><button class="profile-button" data-open-session aria-label="Manage identity"><svg aria-hidden="true"><use href="#i-key"/></svg></button></div>
 </header>
-
-<p class="scope-banner">
-  Local lab with synthetic identities and data. Every control on this page calls the real
-  gateway API — nothing here is simulated in the browser. Not affiliated with any vendor;
-  no SD-WAN, CASB, MFA, or hardware attestation. See <code>docs/threat-model.md</code>.
-</p>
-
-<main class="layout">
-
-  <!-- ---------------------------------------------------------------- -->
-  <section class="panel" aria-labelledby="h-session">
-    <h2 id="h-session">1 · Session</h2>
-    <p class="hint">
-      Password <em>and</em> an enrolled device ID. The issued token is held in
-      JavaScript memory only — never in <code>localStorage</code>, never shown raw.
-    </p>
-    <form id="login-form" autocomplete="off">
-      <label for="username">Username</label>
-      <input id="username" name="username" type="text" value="alice" required
-             autocapitalize="none" spellcheck="false">
-
-      <label for="password">Password</label>
-      <input id="password" name="password" type="password" required
-             placeholder="from secrets/demo_credentials.txt" autocomplete="off">
-
-      <label for="device-id">Device ID</label>
-      <input id="device-id" name="device_id" type="text" value="dev-alice-laptop" required
-             autocapitalize="none" spellcheck="false">
-
-      <div class="row">
-        <button type="submit" class="primary">Sign in</button>
-        <button type="button" id="logout-btn" class="danger" disabled>Log out (revoke token)</button>
-      </div>
-    </form>
-    <div class="preset-row">
-      <span class="preset-label">Fill demo user:</span>
-      <button type="button" class="chip" data-user="alice" data-device="dev-alice-laptop">alice · finance</button>
-      <button type="button" class="chip" data-user="bob" data-device="dev-bob-laptop">bob · engineer</button>
-      <button type="button" class="chip" data-user="carol" data-device="dev-carol-byod">carol · contractor</button>
-      <button type="button" class="chip" data-user="admin" data-device="dev-admin-workstation">admin</button>
-      <button type="button" class="chip warn" data-user="alice" data-device="dev-bob-laptop">alice on Bob's device</button>
-    </div>
+<main id="main" tabindex="-1">
+  <div class="page-heading"><div><p class="eyebrow">CONTROL PLANE <span>/</span> <span id="breadcrumb-current">Command center</span></p><h1 id="page-title">Command center<span class="heading-dot">_</span></h1><p class="page-description" id="page-description">Run a controlled request. Inspect the outcome.</p></div><div class="heading-actions"><button class="text-link" id="how-it-works">Request pipeline <span>↗</span></button><button class="primary connect-button" data-open-session><svg aria-hidden="true"><use href="#i-key"/></svg><span id="connect-label">Connect identity</span></button></div></div>
+  <section class="metrics" aria-label="Console telemetry">
+    <article class="metric"><div class="metric-label"><span class="dot dot-off" id="gateway-dot"></span>GATEWAY</div><div class="metric-value" id="gateway-status">Checking…</div><div class="metric-foot" id="gateway-detail">Connecting to gateway</div></article>
+    <article class="metric"><div class="metric-label">ACTIVE IDENTITY</div><div class="metric-value" id="identity-name">Not connected</div><div class="metric-foot" id="identity-detail">Connect a demo user to begin</div></article>
+    <article class="metric"><div class="metric-label">DLP RULESET</div><div class="metric-value"><span id="rule-count">—</span><span class="metric-unit">active rules</span></div><div class="metric-foot">Text-only content inspection</div></article>
+    <article class="metric"><div class="metric-label">SESSION REQUESTS</div><div class="metric-value" id="request-count">0</div><div class="metric-foot"><span id="deny-count">0 denied</span><span class="metric-divider">/</span>This browser session</div></article>
   </section>
-
-  <!-- ---------------------------------------------------------------- -->
-  <section class="panel" aria-labelledby="h-apps">
-    <h2 id="h-apps">2 · Application access</h2>
-    <p class="hint">
-      Least privilege per role: finance → payroll + wiki · engineer → engineering + wiki ·
-      contractor → wiki only · administrator → all three.
-    </p>
-    <div class="row wrap">
-      <button type="button" class="action" data-app="payroll">GET /apps/payroll</button>
-      <button type="button" class="action" data-app="engineering">GET /apps/engineering</button>
-      <button type="button" class="action" data-app="wiki">GET /apps/wiki</button>
-      <button type="button" class="action warn" data-app="hr-secrets">GET /apps/hr-secrets <span class="tag">unknown</span></button>
-    </div>
-  </section>
-
-  <!-- ---------------------------------------------------------------- -->
-  <section class="panel" aria-labelledby="h-web">
-    <h2 id="h-web">3 · Lab web categories</h2>
-    <p class="hint">
-      Fixed local fixture IDs, not URLs. The phishing and gambling fixtures are inert
-      local files — nothing outbound is ever fetched, and there is no URL parameter to abuse.
-    </p>
-    <div class="row wrap">
-      <button type="button" class="action" data-web="docs">docs <span class="tag ok">allow</span></button>
-      <button type="button" class="action" data-web="phishing-sim">phishing-sim <span class="tag bad">block</span></button>
-      <button type="button" class="action" data-web="gambling-sim">gambling-sim <span class="tag bad">block</span></button>
-    </div>
-    <div class="row">
-      <input id="custom-destination" type="text" value="evil.example.com"
-             aria-label="Arbitrary destination" autocapitalize="none" spellcheck="false">
-      <button type="button" class="action warn" id="custom-web-btn">Try arbitrary destination</button>
-    </div>
-  </section>
-
-  <!-- ---------------------------------------------------------------- -->
-  <section class="panel" aria-labelledby="h-dlp">
-    <h2 id="h-dlp">4 · Upload &amp; DLP</h2>
-    <p class="hint">
-      Contractors may not upload at all. For everyone else the text is scanned
-      <strong>before</strong> synthetic storage is contacted, so a blocked payload never
-      arrives. Watch the upstream <em>accepted-upload counter</em> stay put.
-    </p>
-    <div class="preset-row">
-      <span class="preset-label">Sample payloads:</span>
-      <button type="button" class="chip" data-sample="clean">clean</button>
-      <button type="button" class="chip warn" data-sample="secret">SG-DEMO-SECRET</button>
-      <button type="button" class="chip warn" data-sample="customer">SG-CUSTOMER</button>
-      <button type="button" class="chip warn" data-sample="email">email address</button>
-      <button type="button" class="chip warn" data-sample="extra-field">extra JSON field</button>
-    </div>
-    <label for="upload-filename">Filename</label>
-    <input id="upload-filename" type="text" value="quarterly-notes.txt" spellcheck="false">
-    <label for="upload-content">Content</label>
-    <textarea id="upload-content" rows="5" spellcheck="false">Quarterly summary: headcount steady, no customer identifiers in this note.</textarea>
-    <div class="row">
-      <button type="button" class="primary" id="upload-btn">POST /saas/upload</button>
-      <span class="counter" id="upload-counter">upstream accepted: —</span>
-    </div>
-    <details class="rules">
-      <summary>Active DLP rules</summary>
-      <ul id="dlp-rule-list"></ul>
-      <p class="hint">
-        Regular expressions over UTF-8 text only. No binary, encoded, encrypted, or
-        image content is inspected. Email detection in particular produces false
-        positives by design — see <code>docs/threat-model.md</code>.
-      </p>
-    </details>
-  </section>
-
-  <!-- ---------------------------------------------------------------- -->
-  <section class="panel" aria-labelledby="h-admin">
-    <h2 id="h-admin">5 · Device posture (administrator)</h2>
-    <p class="hint">
-      Posture and revocation are re-evaluated on <strong>every</strong> request. Break a
-      device here, then reuse the <em>same</em> token above — the next request is denied.
-      Restore it and the same token works again. These controls are hidden for non-admins,
-      but the check that matters is server-side.
-    </p>
-    <div class="row">
-      <button type="button" class="action" id="refresh-devices">GET /admin/devices</button>
-    </div>
-    <div class="table-scroll">
-      <table id="devices-table">
-        <thead>
-          <tr>
-            <th scope="col">Device</th><th scope="col">Owner</th>
-            <th scope="col">Managed</th><th scope="col">Compliant</th>
-            <th scope="col">Risk</th><th scope="col">Posture age</th>
-            <th scope="col">Actions</th>
-          </tr>
-        </thead>
-        <tbody id="devices-body">
-          <tr class="empty"><td colspan="7">Sign in as an administrator and refresh.</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- ---------------------------------------------------------------- -->
-  <section class="panel" aria-labelledby="h-audit">
-    <h2 id="h-audit">6 · Audit decisions (administrator)</h2>
-    <p class="hint">
-      Redacted by construction: subject, resource, action, result, reason code, policy
-      version, latency, and DLP <em>rule IDs</em>. No tokens, no passwords, no payloads,
-      no matched values.
-    </p>
-    <div class="row">
-      <label for="audit-result" class="inline">Result</label>
-      <select id="audit-result">
-        <option value="">all</option>
-        <option value="allow">allow</option>
-        <option value="deny">deny</option>
-        <option value="error">error</option>
-      </select>
-      <label for="audit-limit" class="inline">Limit</label>
-      <input id="audit-limit" type="number" value="25" min="1" max="500" class="narrow">
-      <button type="button" class="action" id="refresh-audit">GET /admin/events</button>
-    </div>
-    <div class="table-scroll">
-      <table id="audit-table">
-        <thead>
-          <tr>
-            <th scope="col">Time</th><th scope="col">Subject</th><th scope="col">Resource</th>
-            <th scope="col">Action</th><th scope="col">Result</th><th scope="col">Reason</th>
-            <th scope="col">DLP</th><th scope="col">ms</th>
-          </tr>
-        </thead>
-        <tbody id="audit-body">
-          <tr class="empty"><td colspan="8">Sign in as an administrator and refresh.</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- ---------------------------------------------------------------- -->
-  <section class="panel decision" aria-labelledby="h-decision">
-    <h2 id="h-decision">Last decision</h2>
-    <div class="verdict" id="verdict">
-      <span class="verdict-badge" id="verdict-badge">idle</span>
-      <span class="verdict-request" id="verdict-request">No request yet</span>
-    </div>
-    <dl class="decision-grid">
-      <dt>HTTP status</dt><dd id="d-status">—</dd>
-      <dt>Reason code</dt><dd id="d-reason">—</dd>
-      <dt>Detail</dt><dd id="d-detail">—</dd>
-      <dt>Category</dt><dd id="d-category">—</dd>
-      <dt>DLP rules</dt><dd id="d-dlp">—</dd>
-      <dt>Audit event</dt><dd id="d-event">—</dd>
-      <dt>Round trip</dt><dd id="d-latency">—</dd>
-    </dl>
-    <h3>Raw response</h3>
-    <pre id="d-raw" tabindex="0" aria-label="Raw JSON response">—</pre>
-  </section>
-
+<section class="flow-card" id="request-flow" tabindex="-1" aria-labelledby="flow-title"><div class="flow-heading"><svg aria-hidden="true"><use href="#i-shield"/></svg><h2 id="flow-title">Request pipeline</h2></div><ol><li><span>01</span><div><strong>Verify identity</strong><small>Validate the signed token</small></div></li><li><span>02</span><div><strong>Evaluate policy</strong><small>Role, device posture &amp; revocation</small></div></li><li><span>03</span><div><strong>Inspect &amp; record</strong><small>Scan uploads, commit the audit</small></div></li><li><span>04</span><div><strong>Forward if allowed</strong><small>Only then contact the application</small></div></li></ol><p>A failed check stops the protected request.</p></section>
+<div class="workspace-grid"><div class="workspace-main"><div class="view" id="view-overview"><section class="panel activity-panel" aria-labelledby="h-activity"><div class="panel-heading"><div><h2 id="h-activity">Event stream</h2><p>Requests from this browser session.</p></div><span class="activity-live"><span class="dot dot-on"></span>Session activity</span></div><ol id="activity-list" class="activity-list"><li class="activity-empty"><span class="empty-icon"><svg aria-hidden="true"><use href="#i-pulse"/></svg></span><strong>Waiting for first request</strong><span>Connect an identity, then execute an access check.</span></li></ol></section><section class="panel access-panel" aria-labelledby="h-access">
+            <div class="panel-heading"><div><h2 id="h-access">Test your access</h2><p>Real requests. Real policy decisions.</p></div><span class="subtle-label">INTERACTIVE LAB</span></div>
+            <div class="tabs" role="tablist" aria-label="Request type">
+              <button id="tab-apps" role="tab" aria-selected="true" aria-controls="pane-apps" data-tab="apps"><svg aria-hidden="true"><use href="#i-grid"/></svg>Applications</button>
+              <button id="tab-web" role="tab" aria-selected="false" aria-controls="pane-web" data-tab="web" tabindex="-1"><svg aria-hidden="true"><use href="#i-globe"/></svg>Web access</button>
+              <button id="tab-dlp" role="tab" aria-selected="false" aria-controls="pane-dlp" data-tab="dlp" tabindex="-1"><svg aria-hidden="true"><use href="#i-file"/></svg>Data protection</button>
+            </div>
+            <div class="tab-pane" id="pane-apps" role="tabpanel" aria-labelledby="tab-apps">
+              <div class="resource-grid">
+                <button class="resource-card" data-app="payroll"><span class="resource-icon mint">$</span><span class="resource-name">Payroll</span><span class="resource-description">Finance &amp; compensation</span><span class="resource-bottom">Finance · Admin<svg aria-hidden="true"><use href="#i-arrow"/></svg></span></button>
+                <button class="resource-card" data-app="engineering"><span class="resource-icon violet"><svg aria-hidden="true"><use href="#i-code"/></svg></span><span class="resource-name">Engineering</span><span class="resource-description">Tools &amp; project resources</span><span class="resource-bottom">Engineer · Admin<svg aria-hidden="true"><use href="#i-arrow"/></svg></span></button>
+                <button class="resource-card" data-app="wiki"><span class="resource-icon peach"><svg aria-hidden="true"><use href="#i-file"/></svg></span><span class="resource-name">Team wiki</span><span class="resource-description">Shared team knowledge</span><span class="resource-bottom">All demo roles<svg aria-hidden="true"><use href="#i-arrow"/></svg></span></button>
+              </div>
+              <div class="panel-note"><span>Access follows your role and current device posture.</span><button class="text-link" data-app="hr-secrets">Test an unknown app ↗</button></div>
+            </div>
+            <div class="tab-pane" id="pane-web" role="tabpanel" aria-labelledby="tab-web" hidden>
+              <p class="hint">Explore category-based access using inert local fixtures. These tests do not visit external websites.</p>
+              <div class="web-resources"><button class="web-resource" data-web="docs"><svg aria-hidden="true"><use href="#i-globe"/></svg><span><strong>Documentation</strong><small>Business &amp; economy</small></span><span class="pill allow">Allowed category</span></button><button class="web-resource" data-web="phishing-sim"><svg aria-hidden="true"><use href="#i-globe"/></svg><span><strong>Phishing simulation</strong><small>Local test fixture</small></span><span class="pill deny">Blocked category</span></button><button class="web-resource" data-web="gambling-sim"><svg aria-hidden="true"><use href="#i-globe"/></svg><span><strong>Gambling simulation</strong><small>Local test fixture</small></span><span class="pill deny">Blocked category</span></button></div>
+              <label for="custom-destination">Test an unrecognized destination</label><div class="row"><input id="custom-destination" type="text" value="evil.example.com" autocapitalize="none" spellcheck="false"><button id="custom-web-btn">Test destination <span>↗</span></button></div>
+            </div>
+            <div class="tab-pane" id="pane-dlp" role="tabpanel" aria-labelledby="tab-dlp" hidden>
+              <p class="hint">Sensitive text is blocked before it reaches storage. Choose a sample or write your own.</p>
+              <div class="sample-row"><button class="chip selected" data-sample="clean">Clean text</button><button class="chip" data-sample="secret">Demo secret</button><button class="chip" data-sample="customer">Customer ID</button><button class="chip" data-sample="email">Email address</button><button class="chip" data-sample="extra-field">Malformed request</button></div>
+              <label for="upload-filename">Filename</label><input id="upload-filename" type="text" value="quarterly-notes.txt" spellcheck="false">
+              <label for="upload-content">Content to inspect</label><textarea id="upload-content" rows="5" spellcheck="false">Quarterly summary: headcount steady, no customer identifiers in this note.</textarea>
+              <div class="row wrap"><button class="primary" id="upload-btn"><svg aria-hidden="true"><use href="#i-shield"/></svg>Inspect &amp; upload</button><span class="counter" id="upload-counter">upstream accepted: —</span></div>
+              <details class="rules"><summary>View active DLP rules</summary><ul id="dlp-rule-list"></ul><p class="hint">Regex checks on UTF-8 text only. Encoded, encrypted, binary, and image content are not inspected.</p></details>
+            </div>
+          </section></div><section class="view panel" id="view-devices" aria-labelledby="h-admin" hidden><div class="panel-heading"><div><h2 id="h-admin">Device registry</h2><p>Change posture. See the next request respond.</p></div><button id="refresh-devices" disabled><svg aria-hidden="true"><use href="#i-refresh"/></svg>Refresh</button></div><div class="admin-notice" id="device-access-notice"><svg aria-hidden="true"><use href="#i-key"/></svg><div><strong>Administrator access required</strong><p>Connect the administrator identity to inspect and manage demo devices.</p></div><button data-open-session>Connect identity</button></div><div class="table-scroll"><table id="devices-table"><thead><tr><th scope="col">Device</th><th scope="col">Owner</th><th scope="col">Managed</th><th scope="col">Compliant</th><th scope="col">Risk</th><th scope="col">Age</th><th scope="col">Actions</th></tr></thead><tbody id="devices-body"><tr class="empty"><td colspan="7">Device records appear here after an administrator refreshes.</td></tr></tbody></table></div><p class="table-note">Posture is asserted by an administrator, not measured by an endpoint agent. Authorization is always enforced by the server.</p></section><section class="view panel" id="view-audit" aria-labelledby="h-audit" hidden><div class="panel-heading"><div><h2 id="h-audit">Audit decisions</h2><p>The recorded reason behind every access decision.</p></div><span class="subtle-label">REDACTED BY DESIGN</span></div><div class="admin-notice" id="audit-access-notice"><svg aria-hidden="true"><use href="#i-key"/></svg><div><strong>Administrator access required</strong><p>Connect the administrator identity to read the audit trail.</p></div><button data-open-session>Connect identity</button></div><div class="audit-toolbar"><label for="audit-result">Result<select id="audit-result"><option value="">All results</option><option value="allow">Allowed</option><option value="deny">Denied</option><option value="error">Errors</option></select></label><label for="audit-limit">Rows<input id="audit-limit" type="number" value="25" min="1" max="500" class="narrow"></label><button id="refresh-audit" disabled><svg aria-hidden="true"><use href="#i-refresh"/></svg>Load events</button></div><div class="table-scroll"><table id="audit-table"><thead><tr><th scope="col">Time</th><th scope="col">Subject</th><th scope="col">Resource</th><th scope="col">Action</th><th scope="col">Result</th><th scope="col">Reason</th><th scope="col">DLP</th><th scope="col">ms</th></tr></thead><tbody id="audit-body"><tr class="empty"><td colspan="8">Audit events appear here after an administrator refreshes.</td></tr></tbody></table></div><p class="table-note">Tokens, passwords, payloads, and matched sensitive values are excluded from audit records.</p></section></div><aside class="inspector" aria-label="Request inspector"><section class="panel decision" aria-labelledby="h-decision"><div class="panel-heading"><h2 id="h-decision">Decision output</h2><span class="inspector-indicator"></span></div><div class="verdict-summary" aria-live="polite" aria-atomic="true"><div class="decision-symbol" id="decision-symbol"><svg aria-hidden="true"><use href="#i-shield"/></svg></div><span class="verdict-badge" id="verdict-badge">Awaiting request</span><p id="decision-summary">No request has been executed.</p></div><p class="verdict-request" id="verdict-request">READY / awaiting input</p><dl class="decision-grid"><dt>HTTP status</dt><dd id="d-status">—</dd><dt>Reason code</dt><dd id="d-reason">—</dd><dt>Detail</dt><dd id="d-detail">—</dd><dt>Category</dt><dd id="d-category">—</dd><dt>DLP rules</dt><dd id="d-dlp">—</dd><dt>Audit event</dt><dd id="d-event">—</dd><dt>Round trip</dt><dd id="d-latency">—</dd></dl><details class="raw-response"><summary>View response details <svg aria-hidden="true"><use href="#i-code"/></svg></summary><pre id="d-raw" tabindex="0" aria-label="Redacted JSON response">No request yet.</pre></details></section></aside></div>
+<footer class="footer"><span><svg aria-hidden="true"><use href="#i-shield"/></svg>SASE-inspired security lab</span><span>Synthetic identities &amp; data · No MFA, hardware attestation, or network-layer SASE.</span><a href="/openapi.json">API specification ↗</a></footer>
 </main>
-
-<footer class="footer">
-  <p>
-    SASEGuard is a local teaching lab. Implemented: application-level Zero Trust access,
-    server-side device posture and revocation, lab web-category control, text-only DLP,
-    redacted audit. Not implemented: SD-WAN, real CASB, MFA, hardware attestation,
-    commercial threat intelligence, high availability.
-  </p>
-  <p><a href="/openapi.json">OpenAPI schema</a> · <a href="/healthz">health</a> · <a href="/meta/dlp-rules">DLP rules</a></p>
-</footer>
-
+<dialog id="session-dialog" aria-labelledby="h-session"><div class="dialog-heading"><span class="resource-icon mint"><svg aria-hidden="true"><use href="#i-key"/></svg></span><button id="close-session" class="close-button" aria-label="Close identity dialog">×</button></div><p class="eyebrow">IDENTITY &amp; ACCESS</p><h2 id="h-session">Connect your identity</h2><p class="hint">Choose a demo role, then enter its generated password and enrolled device.</p><div class="session-chip" id="session-chip"><span class="dot dot-off" id="session-dot"></span><span id="session-label">Not signed in</span></div><div class="preset-row"><button type="button" class="chip" data-user="alice" data-device="dev-alice-laptop">Alice · Finance</button><button type="button" class="chip" data-user="bob" data-device="dev-bob-laptop">Bob · Engineer</button><button type="button" class="chip" data-user="carol" data-device="dev-carol-byod">Carol · Contractor</button><button type="button" class="chip" data-user="admin" data-device="dev-admin-workstation">Administrator</button></div><form id="login-form" autocomplete="off"><label for="username">Username</label><input id="username" name="username" type="text" value="alice" required autocapitalize="none" spellcheck="false"><label for="password">Password</label><input id="password" name="password" type="password" required placeholder="Your generated demo password" autocomplete="off"><label for="device-id">Enrolled device</label><input id="device-id" name="device_id" type="text" value="dev-alice-laptop" required autocapitalize="none" spellcheck="false"><p class="login-feedback" id="login-feedback" role="status"></p><div class="row"><button type="submit" id="signin-btn" class="primary">Connect identity <svg aria-hidden="true"><use href="#i-arrow"/></svg></button><button type="button" id="logout-btn" disabled>Log out</button></div></form><p class="dialog-footnote">Sessions last 10 minutes. Refreshing the page clears your token.</p></dialog>
 <script src="/static/app.js"></script>
 </body>
 </html>
